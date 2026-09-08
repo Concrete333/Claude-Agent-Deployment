@@ -12,6 +12,45 @@ the two can be compared like for like.
 Fable 5.1 at medium or high effort as the orchestrator, delegating to workers whose model and
 effort you set explicitly per assignment.
 
+## Installing and using it
+
+Copy `SKILL.md` into your skills directory, keeping the frontmatter intact:
+
+```bash
+git clone https://github.com/Concrete333/Claude-Agent-Deployment.git
+mkdir -p ~/.claude/skills/claude-agent-deployment
+cp Claude-Agent-Deployment/SKILL.md ~/.claude/skills/claude-agent-deployment/
+```
+
+The skill is self-contained. `docs/`, `README.md`, `AGENTS.md`, and `CLAUDE.md` support maintenance
+and audit; none of them need to ship with the installed skill.
+
+It applies when you are planning, executing, or auditing delegated work, and it assumes you can set
+both model and effort per subagent. If your setup cannot set effort explicitly, the skill tells the
+orchestrator to say so and keep the work local rather than delegate on an inherited setting.
+
+### Optional: enforce no nested delegation
+
+The skill tells workers to redelegate only with assigned permission. If you want that enforced
+rather than instructed, Claude Code supports a spawn-depth control, and setting it to `1` disables
+nesting:
+
+```json
+{ "env": { "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1" } }
+```
+
+That is stricter than the skill's own policy, and it is your choice rather than something the skill
+changes on its own. Check the resolved settings after any change: environment variables, session
+choices, and managed settings all feed into the result, and the settings file does not automatically
+win.
+
+### Before adopting it broadly
+
+Run the comparison the skill's evaluation section asks for: a single-agent baseline on the same
+bounded tasks and acceptance criteria, recording the resolved model and effort actually used, total
+usage, retries, and defects found in independent review. A worker's own "complete" is not an
+outcome measure, and a usage figure priced at API rates is not a subscription bill.
+
 ## Evidence base
 
 Source: the Artificial Analysis Intelligence Index v4.3 and its component evaluations, at
@@ -29,6 +68,10 @@ one pricing model, not as a prediction of what any given workload will draw down
 
 Fifteen of the sixteen configurations have published cost data. Sonnet 5 Non-reasoning does not,
 so it is absent from every cost table here.
+
+The capture covers Sonnet 5 at low, medium, max and non-reasoning; there is no Sonnet 5 high figure
+in it. Haiku 4.5 was not in the capture at all, so this evidence neither recommends nor rules it
+out. Treat both as unmeasured rather than as judged.
 
 Full workbook: `docs/benchmarks/claude-model-evidence-2026-09-08.xlsx`, covering the 16 Claude
 configurations only. Per `AGENTS.md` and `CLAUDE.md`, operational use of the skill leaves `docs/`

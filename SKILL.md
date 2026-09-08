@@ -28,7 +28,14 @@ Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strin
 | Verifier (provisional, see below) | Opus 4.8 | `max` |
 
 Set model and effort explicitly when you dispatch, then confirm the worker's effective
-configuration matches what you asked for. If it does not match, or your dispatch mechanism cannot
+configuration matches what you asked for. A generic fork is not a cheaper-model dispatch: it can
+carry the parent's model and effort, so a worker meant to be cheap silently costs orchestrator
+rates. Fork deliberately, when the worker needs the parent's context and its cache, and dispatch a
+defined worker when you want a different model.
+
+Keep the orchestrator's own model stable through a coherent task and delegate instead of switching
+it, which preserves the conversation's cache. This is a preference, not a rule: a warm cache does
+not by itself make the expensive model the cheaper choice. If it does not match, or your dispatch mechanism cannot
 set effort at all, do not delegate on an inherited setting: report the limitation and keep the work
 local. An unintended effort defeats the cost control this table exists for. Never substitute Sonnet
 for a Scout, and never substitute `max` for `high`.
@@ -37,6 +44,12 @@ Keep work local when delegation costs more than it saves. Delegate when you can 
 the work would otherwise load your context with material you do not need to keep, or it is
 genuinely independent and can run while you do something else. Volume of tool calls alone is not a
 reason.
+
+Four things decide where work goes, and no single one settles it: how ambiguous the requirement is,
+how tightly the work couples to other work, what a wrong result costs, and whether correctness can
+be checked independently of the worker that produced it. Settle the check before choosing a cheaper
+worker. A large mechanical change with an exhaustive check suits one; a small change with unclear
+consequences does not, however small it looks.
 
 The orchestrator owns routing, integration, escalation, and final acceptance. Workers return
 results or blockers, and redelegate only with assigned permission.
@@ -52,6 +65,10 @@ sets, extraction, and repetitive edits with objective checks.
 
 Require exact file and symbol references, explicit coverage gaps, and observations kept separate
 from hypotheses.
+
+A claim that something is absent needs the search that establishes it. "No other callers", "nothing
+else uses this", "all records processed" are only usable with the scope and method that produced
+them. Without that, treat the claim as unchecked.
 
 Repetitive edits are writes. Before running Scouts in parallel on them, settle the shared behavior
 and interfaces yourself, or keep the edits sequential.
@@ -189,6 +206,13 @@ instead of trusting the implementer's summary. Findings need location, triggerin
 impact, and evidence. Rank by impact and credible exposure rather than by count. A review that
 finds defects has succeeded.
 
+Acceptance criteria are fixed for the worker. A worker that cannot pass them reports a blocker; it
+does not relax a check, narrow the requirement, or edit the test to fit the implementation. Only the
+orchestrator revises them, and only within what the user actually asked for.
+
+Once you delegate implementation, verify the deliverable rather than reproducing it. Inspect the
+acceptance evidence and the changes; do not re-run every search and edit to stay busy.
+
 Workers run focused acceptance checks. The orchestrator integrates results and runs broader checks
 when the changes or unresolved risks justify them. Route fixes to the implementation owner and
 recheck the affected risks without repeating the whole review.
@@ -209,6 +233,11 @@ repeating an approach that is not working until you have new evidence.
 - **Substantive failure:** an acceptance failure, wrong core assumption, or missed requirement
   survives the bounded attempt.
 
+A worker that runs out of turns has returned partial work, not a completed task, whatever its
+closing message says. It is also not evidence of a reasoning limit. Read the evidence it returned
+and what remains before deciding whether to continue it, narrow the scope, or move to a stronger
+worker.
+
 A Scout that fails on non-trivial work has usually hit a judgment problem. Send it to a
 Diagnostician when the cause or design is unclear, and to a Builder when the requirement was clear
 and only the execution fell short.
@@ -225,8 +254,8 @@ reason.
 
 ## Waiting and health
 
-Use runtime event waits when no useful independent orchestrator work remains, and do not duplicate
-worker work. Wait across active workers together where your runtime supports it. An empty timeout
+Use runtime event waits when no useful independent orchestrator work remains. Wait across active
+workers together where your runtime supports it. An empty timeout
 proves neither failure nor health. Resume waiting unless a blocker, a due checkpoint, or an
 exhausted budget requires action. Do not poll after each timeout or add "still running" checks.
 
