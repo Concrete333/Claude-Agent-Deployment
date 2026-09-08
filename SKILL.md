@@ -11,6 +11,9 @@ corrections, while meeting correctness requirements.
 This skill does not authorize delegation or expand scope. Higher-priority instructions and new
 explicit user choices take precedence.
 
+The skill is self-contained. Do not load reference material from the repository it ships from
+during operational use.
+
 ## Dispatch
 
 Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strings.
@@ -24,13 +27,16 @@ Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strin
 | Reviewer | Fable 5.1 | `high`, or `medium` when reviewing mechanical work |
 | Verifier | Opus 4.8 | `max` |
 
-Set model and effort explicitly when you dispatch. If your dispatch mechanism cannot set effort,
-report that limitation before delegating and choose from this list only: Opus 5 for retrieval,
-Fable 5.1 for implementation, diagnosis, and review, Opus 4.8 for verification. Never substitute
-Sonnet for a Scout, and never substitute `max` for `high`.
+Set model and effort explicitly when you dispatch, then confirm the worker's effective
+configuration matches what you asked for and report any mismatch instead of proceeding. If your
+dispatch mechanism cannot set effort at all, say so before delegating and choose from this list
+only: Opus 5 for retrieval, Fable 5.1 for implementation, diagnosis, and review, Opus 4.8 for
+verification. Never substitute Sonnet for a Scout, and never substitute `max` for `high`.
 
-Keep work local when delegation costs more than it saves. Delegate when the assignment needs more
-than a few tool calls of independent work, or when it can run while you do something else.
+Keep work local when delegation costs more than it saves. Delegate when you can name the benefit:
+the work would otherwise load your context with material you do not need to keep, or it is
+genuinely independent and can run while you do something else. Volume of tool calls alone is not a
+reason.
 
 The orchestrator owns routing, integration, escalation, and final acceptance. Workers return
 results or blockers, and redelegate only with assigned permission.
@@ -75,8 +81,9 @@ ownership.
 
 ### Reviewer: material correctness
 
-Fable 5.1 at `high`, or `medium` for mechanical work. Use a Reviewer when the change touches
-behavior a user relies on, or when the implementer wrote its own acceptance checks. An orchestrator
+Fable 5.1 at `high`, or `medium` for mechanical work. Use a Reviewer when independence from the
+implementer would materially change what gets caught: the change touches behavior a user relies on,
+or the implementer both wrote the code and defined the checks that pass it. An orchestrator
 reviewing at its own effort covers ordinary work, and a second reviewer should not repeat it.
 
 ### Verifier: claims, facts, citations
@@ -93,7 +100,7 @@ Do not use it to review code. Route material-correctness review of code to a Rev
 | Sonnet 5, any effort | Opus 5 Low | Breaks down in agentic loops and asserts wrong answers on knowledge questions. The saving over Opus 5 Low is small enough to be erased by one correction. |
 | Opus 5 High, Xhigh, Max | Fable 5.1 Medium or High | Costs more than the Fable 5.1 setting that does the job better. |
 | Fable 5 | Fable 5.1 High | Costs more for weaker work. |
-| Opus 4.8 Max, outside verification | Opus 5 Medium | Slow, expensive, and weak on agentic work. Its only strength is declining to answer. |
+| Opus 4.8 Max, outside verification | The role that fits the work: Scout, Builder, or Diagnostician | Slow, expensive, and weak on agentic work. Its only strength is answering wrongly less often. |
 
 Sonnet 5 stays acceptable for single-shot, non-agentic text work when the user asks for it. Do not
 substitute it for a Scout.
@@ -103,24 +110,29 @@ substitute it for a Scout.
 Reach for Fable 5.1 `xhigh` only when you can name an unresolved reasoning need, or the user asks
 for it.
 
-Fable 5.1 `max` is not an implementation upgrade and is no better than `high` at agentic coding.
-Reserve it for tasks where breadth of recalled knowledge is the binding constraint, such as
-questions spanning many unfamiliar libraries or domains. Never reach for it as a reflex after a
-failure.
+`xhigh` is the default escalation. Do not reach for Fable 5.1 `max` as a reflex after a failure:
+it costs more than `xhigh` and has not shown a matching gain on implementation work. Use it when
+you can name the reason, such as a task whose binding constraint is breadth of recalled knowledge
+across many unfamiliar libraries or domains, or when task-level evidence favours it.
 
 Raise effort only for a demonstrated reasoning limitation. Do not raise effort to compensate for
 missing evidence, an unclear specification, or a tooling problem.
 
-## Effort and fabrication
+## Wrong answers
 
-Raising Fable 5.1's effort increases both how much it gets right and how often it asserts something
-it does not know.
+Lowering effort does not make a worker more cautious. Across Fable 5.1's effort range the share of
+questions answered wrongly falls as effort rises, so do not drop to a lower effort hoping for fewer
+fabrications.
 
-When a plausible wrong answer entering the work is the risk you care about, prefer lower effort, an
-Opus 5 worker at `low`, or a Verifier pass. Raising effort moves that risk the wrong way.
+When a plausible wrong answer entering the work is the risk you care about, control it through the
+assignment rather than the dial:
 
-State in the assignment when "unknown" or "not found" is a legitimate result. Workers assert more
-when the packet implies an answer must exist.
+- Require every non-obvious claim to cite the file, symbol, or source it came from, and treat an
+  uncited claim as unverified.
+- Ask for remaining uncertainty to be stated explicitly, separately from findings.
+- State when "unknown" or "not found" is a legitimate result. Workers assert more when the packet
+  implies an answer must exist.
+- Add a Verifier pass when a wrong claim would be expensive to discover later.
 
 ## Assignment packet
 
@@ -138,8 +150,8 @@ Expected duration; checkpoint or work budget; blocker reporting:
 Return: results, exact failures/checks, artifacts, and unresolved risks.
 ```
 
-Pass the working trace, not just a task summary. Inherit minimal history while preserving user
-constraints, permissions, and the decisions above. Reuse suitable workers for in-scope
+Pass the relevant decisions and the exact decision-critical evidence, not a bare task summary and
+not the entire history. Preserve user constraints, permissions, and the decisions above. Reuse suitable workers for in-scope
 continuations. Keep handoffs near 200 words, linking longer evidence without dropping
 decision-critical detail.
 
@@ -196,10 +208,11 @@ A Scout that fails on non-trivial work has usually hit a judgment problem. Send 
 Diagnostician when the cause or design is unclear, and to a Builder when the requirement was clear
 and only the execution fell short.
 
-A Diagnostician that fails substantively keeps its model and effort but changes footing: hand the
-next attempt a narrowed scope, the evidence already gathered, and write ownership if implementation
-is now the point. Preserve partial work, and do not restart discovery or cycle through the failed
-role.
+A Diagnostician that fails substantively changes footing rather than repeating: hand the next
+attempt a narrowed scope, the evidence already gathered, and write ownership if implementation is
+now the point. Narrow the scope when the failure came from missing evidence or an unclear
+requirement. Raise effort when the failure showed a reasoning limit you can name. Preserve partial
+work, and do not restart discovery or cycle through the failed role.
 
 If a Builder at `high` fails, separate evidence, environment, specification, and capability
 problems before continuing. Do not repeat unchanged attempts or raise effort without a concrete

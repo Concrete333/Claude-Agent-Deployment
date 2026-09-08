@@ -22,9 +22,9 @@ The lineup covers five Claude families: Sonnet 5, Opus 4.8, Opus 5, Fable 5, and
 5.1 scores highest of the five on the composite index, which is why most roles below route to it.
 
 Cost figures are weighted USD per Intelligence Index task at API list prices. **A Claude
-subscription is not billed per token**, so read cost as a proxy for how quickly work consumes an
-allowance rather than as a bill. The routing in `SKILL.md` rests on relative capability and
-relative burn, both of which survive that caveat.
+subscription is not billed per token**, and nothing here establishes how API cost maps to
+subscription allowance consumption. Treat the cost columns as a capability-per-price ranking under
+one pricing model, not as a prediction of what any given workload will draw down.
 
 Fifteen of the sixteen configurations have published cost data. Sonnet 5 Non-reasoning does not,
 so it is absent from every cost table here.
@@ -110,38 +110,42 @@ it is cheap.
 Opus 5 Medium beats Opus 4.8 Max on general work at roughly half the price. On one measure nothing else in
 the lineup comes close.
 
-| Configuration | Non-hallucination rate | Answer accuracy |
-|---|---:|---:|
-| **Opus 4.8 Max** | **60.7%** | 48.8% |
-| Opus 5 Medium | 39.3% | 57.1% |
-| Fable 5.1 Low | 34.4% | 60.2% |
-| Fable 5.1 High | 31.2% | 64.9% |
-| Fable 5.1 Medium | 30.9% | 63.1% |
-| Fable 5.1 Xhigh | 29.5% | 66.2% |
-| Fable 5.1 Max | 27.4% | 67.2% |
+| Configuration | Non-hallucination rate | Answer accuracy | Wrong answers, all questions |
+|---|---:|---:|---:|
+| **Opus 4.8 Max** | 60.7% | 48.8% | **20.1%** |
+| Fable 5.1 Max | 27.4% | 67.2% | 23.8% |
+| Fable 5.1 Xhigh | 29.5% | 66.2% | 23.8% |
+| Fable 5.1 High | 31.2% | 64.9% | 24.1% |
+| Fable 5.1 Medium | 30.9% | 63.1% | 25.5% |
+| Fable 5.1 Low | 34.4% | 60.2% | 26.1% |
+| Opus 5 Medium | 39.3% | 57.1% | 26.1% |
+| Opus 5 Low | 37.8% | 56.0% | 27.4% |
 
-Artificial Analysis defines the non-hallucination rate as one minus the hallucination rate. It and
-answer accuracy use different denominators, so the two columns do not sum to 100% and you cannot
-subtract one from the other to recover a refusal rate.
+Artificial Analysis defines the non-hallucination rate as one minus the hallucination rate, and
+that hallucination rate is conditional on the questions the model did not answer correctly, not on
+all questions. The third column converts it: wrong answers over all questions equals
+(1 − non-hallucination rate) × (1 − accuracy). That identity reproduces the published Omniscience
+Index exactly, to two decimal places, for every configuration in the workbook, which is what
+confirms the conditional reading.
 
-Opus 4.8 Max trades answer coverage for reliability. When a confident wrong claim is the expensive
-outcome, such as a fabricated API, a mis-cited source, or an invented version number, that is the
-trade to make.
+Opus 4.8 Max trades answer coverage for reliability and produces the fewest wrong answers overall.
+When a confident wrong claim is the expensive outcome, such as a fabricated API, a mis-cited
+source, or an invented version number, that is the trade to make. It is otherwise superseded, so
+confirm it earns the cost on a sample of your own verification work.
 
-## Effort raises accuracy and assertion together
+## Lower effort does not buy caution
 
-Reading the Fable 5.1 rows above in effort order (low, medium, high, xhigh, max): answer accuracy
-climbs steadily from 60.2% to 67.2%, while the non-hallucination rate runs 34.4%, 30.9%, 31.2%,
-29.5%, 27.4%. Accuracy rises monotonically and non-hallucination broadly falls, with one small
-reversal at high effort. Across the full range, higher effort answers more questions correctly and
-asserts wrong answers more often.
+The falling non-hallucination rate as Fable 5.1 effort rises is easy to misread as more fabrication
+at higher effort. It is not. That rate is conditional on the questions the model got wrong, and
+raising effort shrinks the pool of questions it gets wrong. Converted to a share of all questions,
+wrong answers fall from 26.1% at low effort to 23.8% at max.
 
-The composite Omniscience Index still improves with effort, because the accuracy gain outweighs the
-hallucination cost on average. Averages are the wrong lens when one failure mode costs far more
-than the other. If a plausible wrong answer entering your work is the real risk, raising effort
-moves you the wrong way. Route to Opus 5 at low effort, or add a Verifier pass.
+So dropping to a lower effort to reduce fabrication makes it slightly worse, not better. Opus 5 Low
+is the weakest of the non-Sonnet configurations on this measure at 27.4%.
 
-That is why every assignment packet in `SKILL.md` asks the worker what "unknown" looks like.
+Control wrong answers through the assignment instead: require citations for non-obvious claims,
+ask for remaining uncertainty separately from findings, say when "unknown" is a valid result, and
+add a Verifier pass when a wrong claim would be expensive to find later. `SKILL.md` states all four.
 
 ## Fable 5.1 Max is not the escalation target
 
@@ -155,68 +159,20 @@ Max costs 28% more than Xhigh and matches High on agentic coding. Escalating to 
 costs about twice High and buys nothing for implementation work. Xhigh is the real ceiling, and
 reach for it only when you can name the unresolved reasoning need.
 
-## What routing retrieval to a Builder costs
+## Routing retrieval to an implementation model
 
-Take an audit of twelve modules for one defect class, which is retrieval-shaped work. Using
-per-task benchmark cost as the unit:
+An audit that reads twelve modules looking for one defect class is retrieval-shaped work. Sending
+it to Builders at Fable 5.1 High pays implementation-grade rates for reading, several times what
+Scouts at Opus 5 Low cost per task, and the Scout role exists so that does not happen.
 
-- Twelve Builders at Fable 5.1 High: 12 x $3.91 = **$46.92**
-- Twelve Scouts at Opus 5 Low gathering evidence, one Fable 5.1 High synthesizing:
-  (12 x $1.10) + $3.91 = **$17.11** across thirteen agents
+The comparison stops there. Per-task benchmark costs are averages over an evaluation harness, not
+a forecast for a repository, and multiplying them by a worker count would not predict what either
+arrangement actually costs. Context size, cache behavior, retries, and parent re-entry dominate
+real orchestration cost and appear nowhere in these figures.
 
-The second arrangement costs about 37% as much. This is not a saving the policy delivers so much
-as a mistake it prevents: nobody following `SKILL.md` would send retrieval to twelve Builders,
-because the Scout role exists for exactly this shape of work. The number shows what the misroute
-would cost.
-
-The saving holds only while the Scouts do retrieval rather than judgment. Ask those same Scouts to
-write the fixes and the coding gap, 26.3% against 52.0%, comes back as corrections, review passes,
-and rework that the model price never showed.
-
-Treat this as the shape of the difference rather than a forecast. Context size, cache behavior,
-retries, and parent re-entry dominate real orchestration cost, and these task-level figures capture
-none of them.
-
-## What the multi-agent literature says
-
-The published work splits less than it first appears. The strongest case for parallelism,
-[Anthropic's multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system),
-reports a 90.2% gain over a single agent on an internal research evaluation while saying multi-agent
-suits "most coding tasks" poorly, and it keeps synthesis in one agent while distributing only the
-reading. [Cognition](https://cognition.com/blog/dont-build-multi-agents) documents the opposite
-failure: parallel workers make conflicting implicit decisions that collide at merge.
-[LangChain](https://www.langchain.com/blog/how-and-when-to-build-multi-agent-systems) names the axis
-both are describing, that reads parallelize and writes do not. That asymmetry, rather than a verdict
-on parallelism, is what shapes the Fan-out section of `SKILL.md`.
-
-On cost, [AI Agents That Matter](https://arxiv.org/abs/2407.01502) is the sharpest result: on
-HumanEval, LATS cost $134.50 against $2.45 for a simple warming baseline, over fifty times more, and
-scored lower (88.0% against 93.2%). Across the wider set the paper reports that "for substantially
-similar accuracy, the cost can differ by almost two orders of magnitude", and that simple baselines
-Pareto-dominated the complex architectures. That is the reason the evaluation section asks for a
-single-agent baseline rather than a comparison between two team designs.
-
-[MAST](https://arxiv.org/abs/2503.13657) catalogues 14 failure modes across 1,600+ traces from seven
-frameworks, most of them coordination and verification faults rather than model limits. Targeted
-interventions helped without resolving the problem: better role specifications added 9.4% and
-stronger verification 15.6% on ChatDev, with completion rates still low. Its reported failure rates
-run from 41% to 86.7% across the frameworks surveyed.
-
-Two results are easy to over-read in our favour. The
-[equal-budget study](https://arxiv.org/abs/2604.02460) caps thinking tokens rather than actual
-consumption or spend, and excludes tool-based coding, so it argues against convening reasoning
-committees by default rather than showing that more effort always wins.
-[Self-Manager](https://arxiv.org/html/2601.17879v1) shows isolated contexts cut information loss,
-at higher latency and tool-call counts, and it does not show that concurrent scouts save money on a
-repository. Isolation is what helps; running the scouts at the same time is a separate decision.
-
-Two findings are quoted more broadly than they support. The
-[Nature study](https://www.nature.com/articles/s42256-026-01268-y) reports a capability-saturation
-threshold near 45% baseline task success, above which extra agents tend to hurt, but its SWE-bench
-and Terminal-Bench cells run 20 tasks with confidence intervals near 20 percentage points. It is a
-reason for restraint, not a dispatch cutoff. Anthropic's token multiples compare agents against
-chat, not multi-agent against single-agent coding, so they do not size the overhead of the fan-out
-described here.
+What does carry over is the direction: Scouts read, Builders build, and the gap between them on
+agentic coding is wide enough that asking Scouts to write the fixes returns as corrections and
+rework.
 
 ## Limits
 
