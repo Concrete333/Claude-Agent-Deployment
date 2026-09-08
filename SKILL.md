@@ -25,13 +25,13 @@ Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strin
 | Builder | Fable 5.1 | `medium`, or `high` for non-mechanical implementation |
 | Diagnostician | Fable 5.1 | `high` |
 | Reviewer | Fable 5.1 | `high`, or `medium` when reviewing mechanical work |
-| Verifier | Opus 4.8 | `max` |
+| Verifier (provisional, see below) | Opus 4.8 | `max` |
 
 Set model and effort explicitly when you dispatch, then confirm the worker's effective
-configuration matches what you asked for and report any mismatch instead of proceeding. If your
-dispatch mechanism cannot set effort at all, say so before delegating and choose from this list
-only: Opus 5 for retrieval, Fable 5.1 for implementation, diagnosis, and review, Opus 4.8 for
-verification. Never substitute Sonnet for a Scout, and never substitute `max` for `high`.
+configuration matches what you asked for. If it does not match, or your dispatch mechanism cannot
+set effort at all, do not delegate on an inherited setting: report the limitation and keep the work
+local. An unintended effort defeats the cost control this table exists for. Never substitute Sonnet
+for a Scout, and never substitute `max` for `high`.
 
 Keep work local when delegation costs more than it saves. Delegate when you can name the benefit:
 the work would otherwise load your context with material you do not need to keep, or it is
@@ -62,12 +62,18 @@ size alone does not justify routing hard reasoning to a Scout.
 
 ### Builder: implementation
 
-Fable 5.1 at `medium` by default. Move to `high` when the work is non-mechanical, spans interacting
-files, or carries compatibility constraints. Supply expected behavior, interfaces, constraints to
-preserve, and acceptance checks.
+Supply expected behavior, interfaces, constraints to preserve, and acceptance checks. Then pick the
+effort by the shape of the work:
 
-Keep a coupled implementation with one Builder through its fixes and focused checks. Handing each
-step to a fresh agent loses context and buys nothing.
+- `medium` for bounded, well-specified implementation that follows an established pattern in the
+  codebase.
+- `high` for substantial interacting logic, compatibility risk, or subtle correctness requirements.
+- `xhigh` or `max` only for a demonstrated unresolved reasoning need, per the escalation ceiling.
+
+This split is a routing hypothesis worth measuring, not a settled result. If Medium work keeps
+coming back with corrections, move the boundary rather than defaulting everything to High.
+
+One Builder keeps a coupled implementation through its fixes and focused checks.
 
 ### Diagnostician: uncertain cause or design
 
@@ -132,7 +138,8 @@ assignment rather than the dial:
 - Ask for remaining uncertainty to be stated explicitly, separately from findings.
 - State when "unknown" or "not found" is a legitimate result. Workers assert more when the packet
   implies an answer must exist.
-- Add a Verifier pass when a wrong claim would be expensive to discover later.
+- Check claims against their sources, and add a separate Verifier when independence from the
+  author would change what gets caught.
 
 ## Assignment packet
 
@@ -156,8 +163,6 @@ continuations. Keep handoffs near 200 words, linking longer evidence without dro
 decision-critical detail.
 
 ## Fan-out
-
-Keep tightly coupled implementation with one owner, carried through its fixes and focused checks.
 
 Scoping and concurrency are different levers. One scoped Scout can gather evidence and return it
 before implementation starts, which keeps the orchestrator's context clean without running anything
@@ -238,12 +243,10 @@ stopped, keep the successor read-only or on non-overlapping work.
 
 ## Evaluate the policy
 
-Compare against a single-agent baseline on the same tasks and acceptance criteria, counting
-coordination, review, and correction costs. A team finishing sooner does not show that it cost
-less.
-
-Compare total accepted-task cost, elapsed time, corrections, and missed defects on like-for-like
-work. Keep API list prices separate from subscription allowance telemetry.
+Compare against a single-agent baseline on the same tasks and acceptance criteria: total
+accepted-task cost, elapsed time, corrections, and missed defects, counting coordination and
+review. A team finishing sooner does not show that it cost less. Keep API list prices separate from
+subscription allowance telemetry.
 
 When asked for a deployment plan, state roles, models, efforts, scope, dependencies, and acceptance
 checks, and justify any extra worker or review pass.

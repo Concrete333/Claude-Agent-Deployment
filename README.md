@@ -3,8 +3,9 @@
 A routing policy for delegating subagent work across Claude models, chosen on cost and measured
 capability. `SKILL.md` holds the operational policy. This file records the evidence behind it.
 
-A companion policy for OpenAI models lives in a separate `Codex-Agent-Deployment` repository, built
-the same way from the same source so the two can be compared like for like. It is not yet public.
+A companion policy for OpenAI models lives in
+<https://github.com/Concrete333/Codex-Agent-Deployment>, built the same way from the same source so
+the two can be compared like for like.
 
 ## Assumed setup
 
@@ -29,8 +30,9 @@ one pricing model, not as a prediction of what any given workload will draw down
 Fifteen of the sixteen configurations have published cost data. Sonnet 5 Non-reasoning does not,
 so it is absent from every cost table here.
 
-Full workbook: `docs/benchmarks/claude-model-evidence-2026-09-08.xlsx`. Per `AGENTS.md`, it is a
-human reference and should stay out of agent context.
+Full workbook: `docs/benchmarks/claude-model-evidence-2026-09-08.xlsx`, covering the 16 Claude
+configurations only. Per `AGENTS.md` and `CLAUDE.md`, operational use of the skill leaves `docs/`
+alone; audits, research, and work on the skill itself may read it as evidence.
 
 ## The full lineup
 
@@ -122,8 +124,8 @@ the lineup comes close.
 | Opus 5 Low | 37.8% | 56.0% | 27.4% |
 
 Artificial Analysis defines the non-hallucination rate as one minus the hallucination rate, and
-that hallucination rate is conditional on the questions the model did not answer correctly, not on
-all questions. The third column converts it: wrong answers over all questions equals
+that hallucination rate is conditional on all non-correct responses, which includes incorrect,
+partial, and unattempted answers, rather than on every question asked. The third column converts it: wrong answers over all questions equals
 (1 − non-hallucination rate) × (1 − accuracy). That identity reproduces the published Omniscience
 Index exactly, to two decimal places, for every configuration in the workbook, which is what
 confirms the conditional reading.
@@ -136,8 +138,8 @@ confirm it earns the cost on a sample of your own verification work.
 ## Lower effort does not buy caution
 
 The falling non-hallucination rate as Fable 5.1 effort rises is easy to misread as more fabrication
-at higher effort. It is not. That rate is conditional on the questions the model got wrong, and
-raising effort shrinks the pool of questions it gets wrong. Converted to a share of all questions,
+at higher effort. It is not. That rate is conditional on all non-correct responses, incorrect,
+partial and unattempted alike, and raising effort shrinks that pool. Converted to a share of all questions,
 wrong answers fall from 26.1% at low effort to 23.8% at max.
 
 So dropping to a lower effort to reduce fabrication makes it slightly worse, not better. Opus 5 Low
@@ -155,9 +157,11 @@ add a Verifier pass when a wrong claim would be expensive to find later. `SKILL.
 | Intelligence Index | 51.2 | 53.2 | 53.4 |
 | Cost per task | $3.91 | $5.98 | $7.63 |
 
-Max costs 28% more than Xhigh and matches High on agentic coding. Escalating to Max after a failure
-costs about twice High and buys nothing for implementation work. Xhigh is the real ceiling, and
-reach for it only when you can name the unresolved reasoning need.
+Max costs 28% more than Xhigh and matched High on this benchmark. One benchmark cannot establish
+that Max never helps implementation, so the skill treats Xhigh as the default escalation and allows
+Max when you can name the reason or have task-level evidence for it. What the table does rule out
+is reaching for Max reflexively after a failure, which costs about twice High with no measured gain
+to show for it here.
 
 ## Routing retrieval to an implementation model
 
