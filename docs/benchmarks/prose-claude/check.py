@@ -93,9 +93,12 @@ def check(root):
             total += words
             if not MIN_QUOTE_WORDS <= words <= MAX_QUOTE_WORDS:
                 errors.append(tag + f': quote must be {MIN_QUOTE_WORDS}..{MAX_QUOTE_WORDS} words')
-            if re.search(r'\.\.\.|…|\[|\]', quote):
-                errors.append(tag + ': quote must be verbatim; no ellipses or bracketed insertions')
-            if normalize(quote) not in normalize('\n'.join(lines[start - 1:end])):
+            cited = '\n'.join(lines[start - 1:end])
+            for mark in re.findall(r'\.\.\.|…|\[|\]', quote):
+                if mark not in cited:
+                    errors.append(tag + ': quote must be verbatim; no ellipses or bracketed insertions absent from the source')
+                    break
+            if normalize(quote) not in normalize(cited):
                 errors.append(tag + ': quote not found verbatim (whitespace-normalized) within the cited lines')
         if total > MAX_QUOTE_WORDS_PER_RECORD:
             errors.append(f'{ident}: quoted words exceed {MAX_QUOTE_WORDS_PER_RECORD}')
