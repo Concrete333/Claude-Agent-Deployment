@@ -28,7 +28,8 @@ Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strin
 | Verifier (provisional, see below) | Opus 5 | `low` |
 
 Set model and effort explicitly when you dispatch, then confirm the worker's effective
-configuration matches what you asked for. A generic fork is not a cheaper-model dispatch: it can
+configuration matches what you asked for, from the runtime's own record where it keeps one; a
+worker's statement of its own model and effort is a report, not confirmation. A generic fork is not a cheaper-model dispatch: it can
 carry the parent's model and effort, so a worker meant to be cheap silently costs orchestrator
 rates. Fork deliberately, when the worker needs the parent's context and its cache, and dispatch a
 defined worker when you want a different model.
@@ -42,15 +43,13 @@ for a Scout, and never substitute `max` for `high`. If the worker type you were 
 available, stop and report it; a built-in agent type is not a substitute, because it carries its
 own model and effort.
 
-Keep work local when delegation costs more than it saves. Delegate when you can name the benefit:
-the work would otherwise load your context with material you do not need to keep, or it is
-genuinely independent and can run while you do something else. Volume of tool calls alone is not a
-reason.
-
-Before delegating, name the work you will stop doing and the check you will use that does not redo
-it. If acceptance requires you to read the same sources the worker reads, delegating the writing
-does not reduce cost; keep it local, or delegate verification only where a checker adequate for
-that kind of error has already been shown.
+Keep work local when delegation costs more than it saves. Delegate when you can name the work you
+will stop doing and the check you will use that does not redo it: the work would otherwise load
+your context with material you do not need to keep, or it is genuinely independent and can run
+while you do something else. Volume of tool calls alone is not a reason. Delegating the writing
+saves at most what the writing would have cost you; if accepting the result means reading the same
+sources the worker read, count that reread before deciding, and do not skip it to make the
+delegation pay.
 
 Four things decide where work goes, and no single one settles it: how ambiguous the requirement is,
 how tightly the work couples to other work, what a wrong result costs, and whether correctness can
@@ -120,12 +119,11 @@ reviewing at its own effort covers ordinary work, and a second reviewer should n
 
 Opus 5 at `low` for checking a deliverable against supplied sources; Opus 4.8 at `max` only when
 the user names it or the failure is a confident wrong claim about the world rather than about the
-sources (facts, API and version assertions). On the one source-fidelity test run so far, Opus 4.8
-`max`, Fable 5.1 `high` and Opus 5 `low` all returned clean full-coverage reports on an answer with
-a known inverted proposal, at four, three and one units of cost. A clean review report is weak
-evidence; a review that returns findings has done more work than one that returns none. Where a
-mechanical checker can enforce part of the contract, run it first and give the Verifier only what
-remains.
+sources (facts, API and version assertions). No tested configuration has yet caught a subtle
+inversion inside an otherwise correct record, and the costlier ones did no better than the cheapest.
+A clean review report is weak evidence; a review that returns findings has done more work than one
+that returns none. Where a mechanical checker can enforce part of the contract, run it first and
+give the Verifier only what remains.
 
 Do not use it to review code. Route material-correctness review of code to a Reviewer.
 
