@@ -1,6 +1,6 @@
 ---
 name: claude-agent-deployment
-description: Route authorized subagent work to Opus 5 Low for evidence and retrieval, Fable 5.1 Medium or High for implementation and diagnosis, or Opus 4.8 Max for factual verification. Use when planning, executing, or auditing delegated work.
+description: Route authorized subagent work to Opus 5 Low for evidence, retrieval and source checking, or Fable 5.1 Medium or High for implementation and diagnosis. Use when planning, executing, or auditing delegated work.
 ---
 
 # Claude Agent Deployment
@@ -25,7 +25,7 @@ Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strin
 | Builder | Fable 5.1 | `medium`, or `high` for non-mechanical implementation |
 | Diagnostician | Fable 5.1 | `high` |
 | Reviewer | Fable 5.1 | `high`, or `medium` when reviewing mechanical work |
-| Verifier (provisional, see below) | Opus 4.8 | `max` |
+| Verifier (provisional, see below) | Opus 5 | `low` |
 
 Set model and effort explicitly when you dispatch, then confirm the worker's effective
 configuration matches what you asked for. A generic fork is not a cheaper-model dispatch: it can
@@ -38,12 +38,19 @@ it, which preserves the conversation's cache. This is a preference, not a rule: 
 not by itself make the expensive model the cheaper choice. If it does not match, or your dispatch mechanism cannot
 set effort at all, do not delegate on an inherited setting: report the limitation and keep the work
 local. An unintended effort defeats the cost control this table exists for. Never substitute Sonnet
-for a Scout, and never substitute `max` for `high`.
+for a Scout, and never substitute `max` for `high`. If the worker type you were told to use is not
+available, stop and report it; a built-in agent type is not a substitute, because it carries its
+own model and effort.
 
 Keep work local when delegation costs more than it saves. Delegate when you can name the benefit:
 the work would otherwise load your context with material you do not need to keep, or it is
 genuinely independent and can run while you do something else. Volume of tool calls alone is not a
 reason.
+
+Before delegating, name the work you will stop doing and the check you will use that does not redo
+it. If acceptance requires you to read the same sources the worker reads, delegating the writing
+does not reduce cost; keep it local, or delegate verification only where a checker adequate for
+that kind of error has already been shown.
 
 Four things decide where work goes, and no single one settles it: how ambiguous the requirement is,
 how tightly the work couples to other work, what a wrong result costs, and whether correctness can
@@ -111,8 +118,14 @@ reviewing at its own effort covers ordinary work, and a second reviewer should n
 
 ### Verifier: claims, facts, citations
 
-Opus 4.8 at `max`. Use it when a confident wrong statement is the expensive failure: checking
-factual claims, citations, API and version assertions, or a summary against its sources.
+Opus 5 at `low` for checking a deliverable against supplied sources; Opus 4.8 at `max` only when
+the user names it or the failure is a confident wrong claim about the world rather than about the
+sources (facts, API and version assertions). On the one source-fidelity test run so far, Opus 4.8
+`max`, Fable 5.1 `high` and Opus 5 `low` all returned clean full-coverage reports on an answer with
+a known inverted proposal, at four, three and one units of cost. A clean review report is weak
+evidence; a review that returns findings has done more work than one that returns none. Where a
+mechanical checker can enforce part of the contract, run it first and give the Verifier only what
+remains.
 
 Do not use it to review code. Route material-correctness review of code to a Reviewer.
 
@@ -123,7 +136,7 @@ Do not use it to review code. Route material-correctness review of code to a Rev
 | Sonnet 5, any effort | Opus 5 Low | Breaks down in agentic loops and asserts wrong answers on knowledge questions. The saving over Opus 5 Low is small enough to be erased by one correction. |
 | Opus 5 High, Xhigh, Max | Fable 5.1 Medium or High | Costs more than the Fable 5.1 setting that does the job better. |
 | Fable 5 | Fable 5.1 High | Costs more for weaker work. |
-| Opus 4.8 Max, outside verification | The role that fits the work: Scout, Builder, or Diagnostician | Slow, expensive, and weak on agentic work. Its only strength is answering wrongly less often. |
+| Opus 4.8 Max, unless the user names it | The role that fits the work: Scout, Builder, Diagnostician, or Opus 5 Low as Verifier | Slow, expensive, and weak on agentic work. Its only measured strength is answering knowledge questions wrongly less often; on source checking it cost four times Opus 5 Low and caught nothing more. |
 
 Sonnet 5 stays acceptable for single-shot, non-agentic text work when the user asks for it. Do not
 substitute it for a Scout.
@@ -200,6 +213,12 @@ usually cost more than one worker doing both parts.
 ## Review and acceptance
 
 Mechanical edits with strong objective checks need no extra reviewer.
+
+Supply the checker; do not accept one the worker wrote. A worker that reports passing its own check
+has reported completion, not acceptance. Passing a mechanical checker is not verification of
+meaning: when you keep final verification of a deliverable whose correctness depends on its
+sources, read the sources for the records you accept, or give that reading to a Verifier and
+inspect its findings. A worker's flagged judgment calls are yours to check, not to pass on.
 
 Reviews are read-only. Inspect the requirements, the diff, relevant source, and the checks yourself
 instead of trusting the implementer's summary. Findings need location, triggering condition,

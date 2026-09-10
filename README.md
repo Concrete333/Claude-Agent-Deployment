@@ -150,7 +150,26 @@ more than Sonnet 5 Medium and works. Sonnet 5 Max fares worse on value at $5.09,
 Sonnet 5 suits single-shot, non-agentic text work. Do not route subagent work to it just because
 it is cheap.
 
-## Opus 4.8 Max earns a role despite being superseded
+## Measured trials, 10 September 2026
+
+The benchmark figures above were the starting point. The policy has since been tested on bounded
+tasks with a single-agent baseline, following an [audit of the companion Codex repository's
+experiments](docs/claude-audit-2026-09-10.md) and a [trial plan](docs/claude-trial-plan-2026-09-10.md).
+Each is one run per arm, API-equivalent cost, Fable 5.1 medium as orchestrator:
+
+| Trial | Solo | Skill + one forced Opus 5 Low worker | Accepted quality |
+|---|---:|---:|---|
+| [Six import adapters, 244 checks](docs/benchmarks/adapter-claude/results-2026-09-10.md) | $1.90 | $1.55 (−18.3%) | both pass everything; orchestrator reviewed the code |
+| [50-discussion prose review](docs/benchmarks/prose-claude/results-2026-09-10.md) | $2.32 | $1.84 (−20.6%) | equal on blind review; orchestrator read nothing |
+
+The [verifier diagnostic](docs/benchmarks/prose-claude/results-verifiers-2026-09-10.md) gave Opus
+4.8 Max, Fable 5.1 High and Opus 5 Low an answer with a known inverted proposal; all three read every
+source and reported no findings, at $2.21, $1.58 and $0.56. That is why the Verifier row now names
+Opus 5 Low and why the skill calls a clean review report weak evidence. The section below records
+the benchmark reasoning that originally put Opus 4.8 Max there; the trial did not confirm it on
+source checking, and it remains available when named.
+
+## Opus 4.8 Max: fewest wrong answers on knowledge questions
 
 Opus 5 Medium beats Opus 4.8 Max on general work at roughly half the price. On one measure nothing else in
 the lineup comes close.
@@ -174,9 +193,10 @@ Index exactly, to two decimal places, for every configuration in the workbook, w
 confirms the conditional reading.
 
 Opus 4.8 Max trades answer coverage for reliability and produces the fewest wrong answers overall.
-When a confident wrong claim is the expensive outcome, such as a fabricated API, a mis-cited
-source, or an invented version number, that is the trade to make. It is otherwise superseded, so
-confirm it earns the cost on a sample of your own verification work.
+When a confident wrong claim about the world is the expensive outcome, such as a fabricated API
+or an invented version number, that is the trade to make. Checking a deliverable against supplied
+sources is a different task, and on the one such test run it did no better than Opus 5 Low at four
+times the cost. It is otherwise superseded.
 
 ## Lower effort does not buy caution
 
