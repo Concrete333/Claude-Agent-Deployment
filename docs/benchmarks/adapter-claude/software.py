@@ -174,6 +174,8 @@ def acceptance_prompt(packet):
         'acceptance guidance. A software runner dispatched one Luna Max worker to complete TASK.md, then ran the declared '
         'checks. Everything you need is below; the files are also on disk if you want to read them or run anything. '
         'Decide: accept, correct (give the exact findings the worker must fix), or reject. Do not fix code yourself. '
+        'Return correct only for findings where TASK.md settles the behaviour and the code contradicts it; a behaviour '
+        'that turns on a reading TASK.md does not fix is a judgment call: report it in findings and do not send it back. '
         'Return JSON matching the schema: decision, findings, what_you_inspected.\n\n'
         '## Worker assignment\n' + WORKER_PROMPT + '\n\n## Worker handoff (JSON)\n' + json.dumps(packet['handoff'], indent=1) +
         '\n\n## Runner checks (observed, not worker-reported)\n' + json.dumps(packet['checks'], indent=1) +

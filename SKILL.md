@@ -112,8 +112,10 @@ ownership.
 
 Opus 5 at `high` for delegated code whose contract can be exercised by running it. On planted
 contract defects that passed the supplied checker and the worker's tests, it found every one for
-about a third of the cost of Fable 5.1 at `medium`, and on the clean submission it returned two
-real violations Fable had accepted (one run each). Use Fable 5.1 at `high` when the user names it
+about a third of the cost of Fable 5.1 at `medium`; on the clean submission it sent the work back
+for two behaviours the contract did not settle and the reference shared (one run each). A finding
+that rests on a reading the contract does not fix is a judgment call to record for the user, not a
+defect to send back for correction. Use Fable 5.1 at `high` when the user names it
 or when the claim under review cannot be executed, only read. Use a Reviewer when independence from
 the implementer would materially change what gets caught: the change touches behavior a user relies
 on, or the implementer both wrote the code and defined the checks that pass it. A reviewer that

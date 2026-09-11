@@ -1,12 +1,12 @@
 # Reviewer qualification on planted code defects: Fable 5.1 medium against Opus 5 high — 11 September 2026
 
-**Opus 5 `high` caught all three planted defects for $0.32; Fable 5.1 `medium` caught all three for $0.80. On the clean submission Opus also found two real contract violations that Fable had accepted twice.** This is the first cheap reviewer to qualify on anything in these trials, and it did so on code, where the prose verifiers all failed. One run per cell.
+**Opus 5 `high` caught all three planted defects for $0.32; Fable 5.1 `medium` caught all three for $0.80. On the clean submission Opus returned `correct` with two findings that Fable had accepted; checked afterwards against the Codex team's reference implementation, neither is a defect by the fixture's standard, so they count as false alarms on an ambiguous contract, not as catches.** This is the first cheap reviewer to qualify on anything in these trials, and it did so on code, where the prose verifiers all failed. One run per cell.
 
 | Submission | Reviewer | Decision | Planted defects found | Other findings | Cost | Time |
 | --- | --- | --- | --- | --- | ---: | ---: |
 | Clean F | Fable 5.1 `medium` (as run) | accept | — | field-size limit note | $1.068 | 93 s |
 | Clean F | Fable 5.1 `medium` (trimmed tools) | accept | — | field-size limit; Unicode-whitespace line "defensible" | $0.982 | 105 s |
-| Clean F | Opus 5 `high` | correct | — | XML non-XML whitespace accepted; RecursionError escapes | **$0.572** | 126 s |
+| Clean F | Opus 5 `high` | correct | — | 2 findings, both shared by the reference (see below) | **$0.572** | 126 s |
 | Planted | Fable 5.1 `medium` | correct | 3 / 3 | — | $0.803 | 82 s |
 | Planted | Opus 5 `high` | correct | 3 / 3 | — | **$0.319** | 56 s |
 
@@ -31,7 +31,19 @@ On the clean submission Opus returned `correct` with two findings, both reproduc
 - `statement_xml.py` tests "whitespace only" with `str.strip()`, which treats NBSP, U+2028 and U+3000 as whitespace. XML whitespace is space, tab, CR and LF, so non-whitespace text outside a memo made of those characters is silently accepted and dropped. The contract forbids silently skipping malformed data. Fable's trimmed run had noticed the same pattern in `events_jsonl` and called it defensible.
 - `events_jsonl` and `batch_json` let `RecursionError` escape on `"[" * 200000`. The contract says invalid documents must raise `ValueError`. `common.strict_json_loads` is protected, so the fix belongs in the adapters.
 
-Both are real contract violations, the second unambiguously. Fable accepted the same code twice. Whether they are worth a $0.11 Luna correction round is a judgment; that the reviewer found them at half Fable's cost is the point.
+Both reproduce. But reproducing a behaviour is not the same as showing it breaks the contract, and the Codex team's reference implementation, the fixture's definition of correct, does the same in both cases:
+
+| Input | F submission | Reference |
+| --- | --- | --- |
+| NBSP as root text outside memo | 1 record | 1 record |
+| U+2028 as entry tail | 1 record | 1 record |
+| NBSP as entry text before memo | 1 record | 1 record |
+| NBSP-only line in JSONL | skipped | skipped |
+| `"[" * 200000` to batch_json | RecursionError | RecursionError |
+
+The contract says "non-whitespace text outside memo" is invalid and that "other Unicode whitespace within a memo is data", but never says which characters count as whitespace outside one; the reference reads it as Python does. So the first finding is a reading the contract does not settle, and Fable's "defensible" was the fixture-consistent call. The second is a literal contract violation ("invalid documents ... must raise `ValueError`") that the reference has too, so no grader would ever score it. Neither should have produced a `correct` decision; both are worth a line in the report. This is the false-alarm side of the ledger the Codex team asked for: on a clean submission this reviewer sent the work back for an item the fixture's own reference shares, and in arm G that cost a $0.17 correction round.
+
+The lesson is about the acceptance contract, not the model: a reviewer that finds a behaviour the contract does not settle should report it as a judgment call, not a defect, and the acceptance prompt now says so.
 
 ## Where the money went
 
@@ -46,15 +58,15 @@ Opus at `high` thinks more than Fable at `medium` (6.7 k thinking tokens against
 
 ## What this changes
 
-With Opus 5 `high` as the acceptance reviewer the F workflow would cost about $0.43 for a clean pass ($0.32 to $0.57 review plus $0.11 worker), or about $0.55 to $0.70 with one correction round. Against solo Fable at $1.90 that is a 63% to 77% saving, with a reviewer that has now caught every planted defect and two real ones.
+With Opus 5 `high` as the acceptance reviewer, arm G measured $1.24 including a correction round; the reviewer's session cost has ranged $0.32 to $1.00 on this task depending on how much it chose to probe. It has caught every planted defect and raised two false alarms on a clean submission.
 
 The prose verifier diagnostic still stands: on the inverted-proposal task no reviewer at any price found the planted error, Opus 5 `low` included. The two results are not in conflict. Code defects here were reproducible by running the code, and both reviewers found them by writing probes; the prose defect required rereading fifty threads against a summary. Cheap review qualifies where the reviewer can execute the claim.
 
-Suggested skill change, not yet applied: when acceptance is a separate session from orchestration, name Opus 5 `high` as the default reviewer of delegated code, with Fable when the user asks for it; keep Fable-level review for claims the reviewer cannot execute.
+Skill change applied the same day: Opus 5 `high` is the default reviewer of delegated code with executable checks, Fable when the user asks for it or the claim cannot be executed; and a finding that rests on a reading the contract does not settle is a judgment call to record, not a defect to send back.
 
 ## Limits
 
-One run per cell, on one fixture, with three defects I planted knowing what the checker covers. A reviewer that catches three planted defects is not proven on the next task; the defects were of a kind (a stripped field, a missing call, a case fold) that a careful read of a 1,500-character file finds. Neither reviewer was tested on a defect spread across files or one that needs the fixture data to see. The clean-run findings were not planted and were confirmed after the fact, so they count as real, but their severity is a judgment. Opus did not re-run the checker; it trusted the runner's observed results, which is what the runner is for, but it means a wrong runner would not be caught by this reviewer.
+One run per cell, on one fixture, with three defects I planted knowing what the checker covers. A reviewer that catches three planted defects is not proven on the next task; the defects were of a kind (a stripped field, a missing call, a case fold) that a careful read of a 1,500-character file finds. Neither reviewer was tested on a defect spread across files or one that needs the fixture data to see. The clean-run findings were not planted; checked against the reference they are not defects, so the clean submission stayed a clean control and the reviewer's two findings on it are its false-alarm count. Our three planted defects are now known to both teams and cannot serve as unseen defects again; they remain useful as a shared cross-vendor comparison. Opus did not re-run the checker; it trusted the runner's observed results, which is what the runner is for, but it means a wrong runner would not be caught by this reviewer.
 
 ## Identities
 
