@@ -169,6 +169,14 @@ Opus 5 Low and why the skill calls a clean review report weak evidence. The sect
 the benchmark reasoning that originally put Opus 4.8 Max there; the trial did not confirm it on
 source checking, and it remains available when named.
 
+Cross-vendor delegation on the same adapter task, 11 September: Fable 5.1 handing the batch to one
+Luna Max worker through OpenAI's Codex plugin cost [$1.38](docs/benchmarks/adapter-claude/results-luna-2026-09-11.md),
+a third of it a prompt-cache miss from waiting ten minutes for the worker. Moving the dispatch and
+the mechanical checks into a script, so that Fable only ever runs a short acceptance session, cost
+[$1.18](docs/benchmarks/adapter-claude/results-software-2026-09-11.md), 38% below solo, with all
+244 checks and four probes passing. The worker is now about 9% of the bill; the rest is the
+acceptance session, and about $0.40 of that is the fixed cost of starting a Fable session.
+
 ## Opus 4.8 Max: fewest wrong answers on knowledge questions
 
 Opus 5 Medium beats Opus 4.8 Max on general work at roughly half the price. On one measure nothing else in
