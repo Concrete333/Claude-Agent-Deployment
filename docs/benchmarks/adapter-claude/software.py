@@ -21,7 +21,8 @@ from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-FIXTURE = HERE / 'local-fixture-software.json'
+VARIANT = os.environ.get('SOFTWARE_VARIANT', '')  # '' = arm F root; e.g. 'opus' = arm G root (Opus 5 high acceptance)
+FIXTURE = HERE / ('local-fixture-software' + (f'-{VARIANT}' if VARIANT else '') + '.json')
 spec = importlib.util.spec_from_file_location('adapters', HERE / 'adapters.py')
 adapters = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adapters)
@@ -32,6 +33,8 @@ spec2.loader.exec_module(luna)
 
 WORKER = ('gpt-5.6-luna', 'max')
 ORCH = adapters.ORCHESTRATOR
+# Acceptance reviewer. Opus 5 high qualified on planted defects (results-reviewers-2026-09-11); Fable was arm F's.
+REVIEWER = tuple(os.environ.get('SOFTWARE_REVIEWER', 'claude-opus-5,high').split(','))
 WORKER_TIMEOUT = 1500
 ACCEPT_BUDGET = 4.0
 FORMATS = None
@@ -74,14 +77,14 @@ def prepare():
         raise SystemExit('fixture exists; preserve it')
     codex = json.loads(adapters.CODEX_FIXTURE.read_text(encoding='utf-8'))
     src, ref, held = Path(codex['source']), Path(codex['reference']), Path(codex['root']) / 'held-out.json'
-    root = Path(codex['root']).parent / ('claude-adapters-software-' + hashlib.sha256(str(time.time()).encode()).hexdigest()[:8])
+    root = Path(codex['root']).parent / ('claude-adapters-software-' + (f'{VARIANT}-' if VARIANT else '') + hashlib.sha256(str(time.time()).encode()).hexdigest()[:8])
     root.mkdir()
     shutil.copy2(held, root / 'held-out.json')
     checkout = root / 'F'
     shutil.copytree(src, checkout, ignore=shutil.ignore_patterns('__pycache__'))
     (root / 'handoff-schema.json').write_text(json.dumps(SCHEMA, indent=2), encoding='utf-8')
     manifest = {'root': str(root), 'checkout': str(checkout), 'codex_source': str(src), 'formats': codex['formats'],
-                'codex_bin': codex_bin(), 'created': time.strftime('%Y-%m-%dT%H:%M:%S%z'), 'orchestrator': ORCH, 'worker': WORKER,
+                'codex_bin': codex_bin(), 'created': time.strftime('%Y-%m-%dT%H:%M:%S%z'), 'orchestrator': ORCH, 'worker': WORKER, 'reviewer': REVIEWER,
                 'skill_sha256': sha_file(adapters.SKILL_PATH), 'files': adapters.tree_hashes(checkout),
                 'protected': json.loads((src / 'protected_hashes.json').read_text(encoding='utf-8'))}
     qual = adapters.grade(ref, src, root / 'held-out.json', codex['formats'])
@@ -182,7 +185,7 @@ ACCEPT_TOOLS = ['Read', 'Glob', 'Grep', 'Bash', 'PowerShell']  # what an accepta
 
 
 def accept(manifest, packet, out_dir, resume_session=None, name='accept', reviewer=None):
-    args = harness.base_args(*(reviewer or ORCH), ACCEPT_BUDGET, ['Agent', 'Task', 'Edit', 'Write'], ACCEPT_TOOLS, tools=ACCEPT_TOOLS)
+    args = harness.base_args(*(reviewer or REVIEWER), ACCEPT_BUDGET, ['Agent', 'Task', 'Edit', 'Write'], ACCEPT_TOOLS, tools=ACCEPT_TOOLS)
     args += ['--json-schema', json.dumps(ACCEPT_SCHEMA)]
     if resume_session:
         args += ['--resume', resume_session]
@@ -313,7 +316,7 @@ def reaccept(argv):
     shutil.copy2(adapters.SKILL_PATH, cwd / 'SKILL.md')
     packet = {'handoff': handoff, 'checks': run_checks(manifest), 'diff': diff_text(manifest)}
     acc = accept(manifest, packet, out_dir, name='accept', reviewer=reviewer)
-    acc['configuration'] = {'tools': ACCEPT_TOOLS, 'reviewer': list(reviewer or ORCH), 'budget': ACCEPT_BUDGET,
+    acc['configuration'] = {'tools': ACCEPT_TOOLS, 'reviewer': list(reviewer or REVIEWER), 'budget': ACCEPT_BUDGET,
                             'checkout': manifest['checkout'], 'owned_file_hashes': owned}
     (out_dir / 'receipt-reaccept.json').write_text(json.dumps(acc, indent=2), encoding='utf-8')
     print(json.dumps({label: n, 'decision': acc['decision'], 'cost_usd': acc['cost_usd'], 'turns': acc['num_turns'],

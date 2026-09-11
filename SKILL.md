@@ -1,6 +1,6 @@
 ---
 name: claude-agent-deployment
-description: Route authorized subagent work to Opus 5 Low for evidence, retrieval and source checking, or Fable 5.1 Medium or High for implementation and diagnosis. Use when planning, executing, or auditing delegated work.
+description: Route authorized subagent work to Opus 5 Low for evidence, retrieval and source checking, Opus 5 High for reviewing delegated code, or Fable 5.1 Medium or High for implementation and diagnosis. Use when planning, executing, or auditing delegated work.
 ---
 
 # Claude Agent Deployment
@@ -24,7 +24,7 @@ Effort values are `low`, `medium`, `high`, `xhigh`, `max`. Use these exact strin
 | Scout | Opus 5 | `low` |
 | Builder | Fable 5.1 | `medium`, or `high` for non-mechanical implementation |
 | Diagnostician | Fable 5.1 | `high` |
-| Reviewer | Fable 5.1 | `high`, or `medium` when reviewing mechanical work |
+| Reviewer | Opus 5 | `high` for delegated code with executable checks; Fable 5.1 `high` when the user names it or the claim cannot be executed |
 | Verifier (provisional, see below) | Opus 5 | `low` |
 
 Set model and effort explicitly when you dispatch, then confirm the worker's effective
@@ -110,10 +110,16 @@ ownership.
 
 ### Reviewer: material correctness
 
-Fable 5.1 at `high`, or `medium` for mechanical work. Use a Reviewer when independence from the
-implementer would materially change what gets caught: the change touches behavior a user relies on,
-or the implementer both wrote the code and defined the checks that pass it. An orchestrator
-reviewing at its own effort covers ordinary work, and a second reviewer should not repeat it.
+Opus 5 at `high` for delegated code whose contract can be exercised by running it. On planted
+contract defects that passed the supplied checker and the worker's tests, it found every one for
+about a third of the cost of Fable 5.1 at `medium`, and on the clean submission it returned two
+real violations Fable had accepted (one run each). Use Fable 5.1 at `high` when the user names it
+or when the claim under review cannot be executed, only read. Use a Reviewer when independence from
+the implementer would materially change what gets caught: the change touches behavior a user relies
+on, or the implementer both wrote the code and defined the checks that pass it. A reviewer that
+writes its own probes against the contract is doing the work; one that re-runs the supplied checker
+and stops is not. When the acceptance session is separate from orchestration (a script ran the
+worker and the checks first), the Reviewer is the acceptance session.
 
 ### Verifier: claims, facts, citations
 
