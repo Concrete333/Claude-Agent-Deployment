@@ -39,6 +39,28 @@ The worker is now nearly free; the remaining cost is almost all the acceptance s
 2. Let Fable's own probe script be the expensive part and stop it re-reading files the checker already covers. Risky: the reads are where a coordinator catches what a checker cannot.
 3. Move acceptance to a cheaper model. The verifier diagnostic showed Opus 5 `low`, Fable `high` and Opus 4.8 `max` all missing a planted prose defect, so this needs a held-out task with planted code defects before it can be trusted, not another clean pass on this fixture.
 
+## Follow-up the same day: trimming the acceptance session's fixed context
+
+The system prompt text is small (about 12,000 characters, 3 k tokens). The fixed cost is the tool definitions. A Haiku probe of a one-word session showed 24.1 k fixed tokens with the flags as run and 15.0 k with `--tools Read,Glob,Grep,Bash,PowerShell`: `--disallowedTools` only denies a call, and the denied tools' definitions (Write, Edit, Agent, web, plan mode, todo list, and so on) were still sent with every request. `--tools` removes them; structured output still works under it. Excluding the dynamic system-prompt sections saved 100 tokens, not worth it.
+
+This is not tailoring to the task. The five tools are what an acceptance session may do on any task, read, search and run, and the skill already forbids it to edit. The session was paying for definitions of tools the runner had already forbidden it to call.
+
+Rerun of the acceptance session alone on the same saved F submission, same prompt, only the tool list changed (`software.py reaccept`):
+
+| | As run | Trimmed |
+| --- | ---: | ---: |
+| First request (cache write) | 32,167 | 20,183 |
+| Cache writes, total | 51,637 | 42,193 |
+| Cache reads, total | 117,551 | 81,985 |
+| Output (thinking) | 7,705 (3,501) | 8,512 (3,716) |
+| Fable cost | $1.061 | $0.974 |
+| Session cost with Haiku | $1.068 | $0.982 |
+| Decision | accept | accept |
+
+Both sessions accepted, re-ran the checks and hashes, read every delivered file, wrote a probe script (about 50 cases, then about 70) and flagged the process-global `csv.field_size_limit`; the second also noted that a line of non-ASCII Unicode whitespace is skipped rather than rejected, and called it defensible. The fixed saving is 12 k tokens on the first request and the same 12 k on every cache read after it, about $0.16; the extra 800 output tokens of probing took back $0.04. With the trimmed acceptance the F workflow would have cost about $1.09, 42% below solo Fable. One run each, and the probe count shows the acceptance session's own choices move the cost by a few cents either way.
+
+The change is in the shared harness (`run.py base_args(..., tools=)`) and applies to the acceptance session only; the A, D and E receipts were taken with the default tool list and are left as they were.
+
 ## Limits
 
 One run; a fixture both worker vendors have solved several times; the correction loop was not exercised; the worker took 17 minutes, which does not matter for cost but would for anyone waiting. The acceptance session is not an orchestrator: the script chose the worker and the checks, so F measures a fixed pipeline, not a coordinator's routing. Luna's own-thread usage may not be what a Codex subscription bills. The first F attempt aborted before any model spend on the worker (`codex exec` refused an untrusted directory; the runner then spent $0.46 on a Fable session that correctly rejected the empty handoff); that attempt is excluded from the table and the runner now aborts before acceptance when the worker fails.
@@ -47,4 +69,5 @@ One run; a fixture both worker vendors have solved several times; the correction
 
 - Skill SHA-256: `272a647921b7e67818a68c0bfadef7f49711ae346a52addb33154b84fb21ac12`
 - Fable session `06cd74b3-4365-4580-87de-e81db1b6c2ca`; Codex thread `01a09072-dd3c-76f1-be2a-64846e3a428d`; Codex CLI 0.153.4 via `codex exec`
-- Root `%LOCALAPPDATA%\Temp\claude-adapters-software-1e8874b5`; receipts, acceptance result, handoff, summary and the Codex rollout under `private/software/`
+- Trimmed-context acceptance rerun: Fable session `6d60d569-a352-43e2-8e5a-4b0e52dc8f8a`
+- Root `%LOCALAPPDATA%\Temp\claude-adapters-software-1e8874b5`; receipts, acceptance results, handoff, summary and the Codex rollout under `private/software/`

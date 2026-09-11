@@ -113,16 +113,22 @@ def claude_bin():
     return b
 
 
-def base_args(model, effort, budget, extra_tools_disallowed, allowed=None):
+def base_args(model, effort, budget, extra_tools_disallowed, allowed=None, tools=None):
     # --safe-mode is not used: it disables custom agents passed via --agents (smoke test, 10 Sep 2026).
     # Consequence: the user's global ~/.claude/CLAUDE.md is loaded in every arm; the prompt forbids distill.
-    return [claude_bin(), '-p', '--output-format', 'json', '--setting-sources', '',
+    args = [claude_bin(), '-p', '--output-format', 'json', '--setting-sources', '',
             '--strict-mcp-config', '--disable-slash-commands', '--permission-mode', 'dontAsk',
             '--permission-prompts', 'none', '--max-budget-usd', str(budget),
             '--model', model, '--effort', effort,
             '--disallowedTools', ','.join(['WebSearch', 'WebFetch', 'NotebookEdit'] + extra_tools_disallowed),
             # dontAsk denies anything not explicitly allowed; A attempt 2 (10 Sep) was blocked on Write/Bash without this.
             '--allowedTools', ','.join(allowed or COMMON_TOOLS)]
+    if tools is not None:
+        # --disallowedTools only denies a call; the denied tools' definitions are still sent with every request
+        # (Haiku probe, 11 Sep 2026: 24.1k fixed tokens with the default tool list, 15.0k with --tools naming the
+        # five the session may call). --tools removes the definitions. Structured output still works under it.
+        args += ['--tools', ','.join(tools)]
+    return args
 
 
 def agents_json():

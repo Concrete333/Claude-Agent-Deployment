@@ -178,8 +178,11 @@ def acceptance_prompt(packet):
     )
 
 
-def accept(manifest, packet, out_dir, resume_session=None):
-    args = harness.base_args(*ORCH, ACCEPT_BUDGET, ['Agent', 'Task', 'Edit', 'Write'], ['Read', 'Glob', 'Grep', 'Bash', 'PowerShell'])
+ACCEPT_TOOLS = ['Read', 'Glob', 'Grep', 'Bash', 'PowerShell']  # what an acceptance session may do: read, search, run. Not edit.
+
+
+def accept(manifest, packet, out_dir, resume_session=None, name='accept'):
+    args = harness.base_args(*ORCH, ACCEPT_BUDGET, ['Agent', 'Task', 'Edit', 'Write'], ACCEPT_TOOLS, tools=ACCEPT_TOOLS)
     args += ['--json-schema', json.dumps(ACCEPT_SCHEMA)]
     if resume_session:
         args += ['--resume', resume_session]
@@ -187,7 +190,7 @@ def accept(manifest, packet, out_dir, resume_session=None):
         'The worker has returned a correction. Updated runner checks and delivered files follow. Decide again: accept, correct, or reject.\n\n'
         '## Worker handoff (JSON)\n' + json.dumps(packet['handoff'], indent=1) + '\n\n## Runner checks\n' + json.dumps(packet['checks'], indent=1)
         + '\n\n## Delivered files\n' + packet['diff'])
-    r = harness.launch(manifest['checkout'], args, prompt, out_dir / ('accept-2.json' if resume_session else 'accept-1.json'), 1200)
+    r = harness.launch(manifest['checkout'], args, prompt, out_dir / (f'{name}-2.json' if resume_session else f'{name}-1.json'), 1200)
     d = r['result'] or {}
     decision = d.get('structured_output') or {}
     if not decision:
@@ -236,6 +239,30 @@ def run():
                       'final_decision': rounds[-1]['acceptance']['decision'],
                       'worker_threads': [r['worker']['thread_id'] for r in rounds],
                       'accept_costs': [r['acceptance']['cost_usd'] for r in rounds]}, indent=2))
+
+
+def reaccept():
+    """Rerun only the acceptance session on the saved worker-1 submission (same prompt, same files), to measure a
+    change to the acceptance session's configuration. One Fable session per call; receipt-F.json is not touched."""
+    root, manifest = load()
+    summary = json.loads((root / 'summary-F.json').read_text(encoding='utf-8'))
+    cwd = Path(manifest['checkout'])
+    owned = {k: v for k, v in adapters.tree_hashes(cwd).items() if k.startswith('imports/adapters/') or k.startswith('test_')}
+    if owned != summary['owned_file_hashes']:
+        raise SystemExit('checkout differs from the graded F submission; refusing')
+    handoff = json.loads((root / 'worker-1' / 'handoff.json').read_text(encoding='utf-8'))
+    n = 1 + len(list(root.glob('reaccept-*')))
+    out_dir = root / f'reaccept-{n}'
+    out_dir.mkdir()
+    shutil.copy2(adapters.SKILL_PATH, cwd / 'SKILL.md')
+    packet = {'handoff': handoff, 'checks': run_checks(manifest), 'diff': diff_text(manifest)}
+    acc = accept(manifest, packet, out_dir, name='accept')
+    acc['configuration'] = {'tools': ACCEPT_TOOLS, 'orchestrator': ORCH, 'budget': ACCEPT_BUDGET}
+    (out_dir / 'receipt-reaccept.json').write_text(json.dumps(acc, indent=2), encoding='utf-8')
+    print(json.dumps({'reaccept': n, 'decision': acc['decision'], 'cost_usd': acc['cost_usd'], 'turns': acc['num_turns'],
+                      'duration_s': round(acc['duration_s']), 'usage': acc['usage'],
+                      'modelUsage': {m: {k: u[k] for k in ('cacheCreationInputTokens', 'cacheReadInputTokens', 'outputTokens', 'costUSD')}
+                                     for m, u in (acc['modelUsage'] or {}).items()}}, indent=2))
 
 
 def luna_accounting(thread_ids):
@@ -292,4 +319,4 @@ def summarize():
 
 if __name__ == '__main__':
     mode = sys.argv[1] if len(sys.argv) > 1 else ''
-    {'prepare': prepare, 'run': run, 'summarize': summarize}.get(mode, lambda: print(__doc__))()
+    {'prepare': prepare, 'run': run, 'summarize': summarize, 'reaccept': reaccept}.get(mode, lambda: print(__doc__))()
