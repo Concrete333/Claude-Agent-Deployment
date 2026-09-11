@@ -2,8 +2,7 @@
 Thumbs.db
 ~$*
 COMMIT_MSG.txt
-local-fixture.json
-local-fixture-luna.json
+local-fixture*.json
 __pycache__/
 docs/benchmarks/prose-claude/private/
 docs/benchmarks/adapter-claude/private/
