@@ -22,7 +22,8 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-FIXTURE = HERE / 'local-fixture.json'
+PROSE_VARIANT = os.environ.get('PROSE_VARIANT', '')  # '' = the 10 September root; e.g. 'skill2' = rerun under the amended skill
+FIXTURE = HERE / ('local-fixture' + (f'-{PROSE_VARIANT}' if PROSE_VARIANT else '') + '.json')
 SKILL_PATH = HERE.parent.parent.parent / 'SKILL.md'
 ORCHESTRATOR = ('claude-fable-5-1', 'medium')
 WORKER = ('claude-opus-5', 'low')
@@ -91,7 +92,7 @@ def prepare():
     if FIXTURE.is_file():
         raise SystemExit('fixture exists; refusing to overwrite an experiment root')
     cases = json.loads((HERE / 'cases.json').read_text(encoding='utf-8'))
-    root = Path(tempfile.mkdtemp(prefix='claude-prose-'))
+    root = Path(tempfile.mkdtemp(prefix='claude-prose-' + (f'{PROSE_VARIANT}-' if PROSE_VARIANT else '')))
     manifest = {'root': str(root), 'created': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
                 'orchestrator': ORCHESTRATOR, 'worker': WORKER, 'budget_usd': BUDGET_USD,
                 'cases_sha256': sha_file(HERE / 'cases.json'), 'grader_sha256': sha_file(HERE / 'grade.py'),

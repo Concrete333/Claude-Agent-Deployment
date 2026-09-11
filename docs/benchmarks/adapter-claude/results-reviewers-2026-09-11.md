@@ -64,6 +64,36 @@ The prose verifier diagnostic still stands: on the inverted-proposal task no rev
 
 Skill change applied the same day: Opus 5 `high` is the default reviewer of delegated code with executable checks, Fable when the user asks for it or the claim cannot be executed; and a finding that rests on a reading the contract does not settle is a judgment call to record, not a defect to send back.
 
+## Same day, second round: cheaper efforts, and defects the runner had not seen
+
+Two follow-ups, both read-only acceptance sessions under the amended prompt (`correct` only where TASK.md settles the behaviour; the rest reported as judgment calls).
+
+### Opus 5 at `medium` and `low` on the known mutant and the clean control
+
+| Reviewer | Known mutant (3 planted) | Clean control | Output tokens (thinking) |
+| --- | --- | --- | --- |
+| Opus 5 `high` (earlier, old prompt) | 3/3, $0.32 | 2 findings sent back, $0.57 | 4,435 / 10,007 (6,667) |
+| Opus 5 `medium` | 3/3, $0.26 | accept, judgment calls reported, $0.29 | 1,861 (352) / 4,051 (1,594) |
+| Opus 5 `low` | 2/3, $0.16 (missed the stripped currency) | accept, $0.23 | 1,419 (206) / 2,559 (871) |
+
+`medium` holds the catch rate at about 80% of `high`'s cost on the mutant and half on the clean run; `low` drops a defect. The clean-control comparison with `high` crosses the prompt change, so the "sent back" difference is partly the prompt: under the new wording both `medium` and `low` reported the same Unicode-whitespace observations as judgment calls and accepted.
+
+### Sealed-key test: three defects unknown to the person running the reviews
+
+To get closer to unseen defects without a new fixture, a separate agent planted three defects in a copy of the F submission, screened them against the 146-case checker and the worker's tests, wrote the key to a file, and reported back only the file's SHA-256 (`a0dee34b…`). The reviews ran before the key was opened; the hash matched afterwards. This is a procedural seal (the key sat on disk unread), not a cryptographic one, and the planting agent was told which defect kinds to avoid (the three known ones and the two disputed Unicode/recursion cases), so the defects are independent of the runner but not of the instructions.
+
+The planted defects: `fixed_width` rejects a line of exactly 30 characters (`<=` for `<`; contract says "at least 30 characters", memo may be empty); `statement_xml` no longer checks `memo.tail`, so text after `</memo>` inside an entry is accepted; `batch_json` no longer checks that `items` is a list, so `"items": {}` returns `[]` and `"items": 5` raises `TypeError`. All three pass the 146 visible cases and the tests.
+
+| Reviewer | Found | Sent back beyond the three | Cost | Time | Output (thinking) |
+| --- | --- | --- | ---: | ---: | ---: |
+| Opus 5 `high` | 3/3 | none; 3 judgment calls reported | $0.365 | 83 s | 6,523 (3,652) |
+| Opus 5 `medium` | 3/3 | none; 2 judgment calls reported | $0.222 | 34 s | 2,387 (923) |
+| Fable 5.1 `medium` | 3/3 | none; 2 judgment calls reported | $1.094 | 127 s | 10,543 (6,224) |
+
+Every reviewer gave the line, a reproducing input and the fix for each defect, and each noticed on its own that `"items": 5` raises the wrong exception type. Opus `medium` did it in 34 seconds for 22 cents. The judgment calls reported were the same three each time (Unicode-only lines skipped, strict CSV quote handling, XML comments and PIs rejected), all matching the worker's own declarations or the contract's "outside the input domain" clause; none was sent back.
+
+Across both mutants that is 6/6 for Opus 5 `high` and `medium` and 6/6 for Fable `medium`, at roughly $0.35, $0.25 and $0.95 per review. Opus 5 `medium` is now the cheapest configuration that has caught every planted defect, and the skill's Reviewer row should say so once a second task confirms it; this is still one fixture.
+
 ## Limits
 
 One run per cell, on one fixture, with three defects I planted knowing what the checker covers. A reviewer that catches three planted defects is not proven on the next task; the defects were of a kind (a stripped field, a missing call, a case fold) that a careful read of a 1,500-character file finds. Neither reviewer was tested on a defect spread across files or one that needs the fixture data to see. The clean-run findings were not planted; checked against the reference neither is confirmed, so the clean submission stays a clean control pending adjudication of the RecursionError point; the reviewer's findings on it are one false alarm and one open discrepancy. Our three planted defects are now known to both teams and cannot serve as unseen defects again; they remain useful as a shared cross-vendor comparison. Opus did not re-run the checker; it trusted the runner's observed results, which is what the runner is for, but it means a wrong runner would not be caught by this reviewer.
