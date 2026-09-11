@@ -8,6 +8,7 @@
 | D | Fable + Opus 5 `low` builder | $1.549 | $0.784 | $0.763 | 146/146 | 98/98 | 4/4 | 225 s |
 | E | Fable + Luna `max` via Codex plugin | $1.379 | $1.270 (+$0.053 Sonnet) | $0.056 | 146/146 | 98/98 | 4/4 | 651 s |
 | F | script runs Luna `max`, then one Fable 5.1 `medium` acceptance session | **$1.177** | $1.068 | $0.109 | 146/146 | 98/98 | 4/4 | 1,091 s |
+| G | same script, Opus 5 `high` acceptance; one correction round | $1.244 | $1.165 | $0.080 | 146/146 | 98/98 | 4/4 | 996 s |
 
 Same qualified version-two fixture, grader, protected-hash check and post-hoc probes (JSONL whitespace-only line with CR, CR as JSON whitespace inside a line, CR-separated objects must fail, 150,000-character CSV memo). Protected files unchanged; no unexpected files. Claude costs are list-price equivalents from the CLI receipt, Luna's from its Codex rollout at the Codex team's rates. Not subscription bills.
 
@@ -61,13 +62,33 @@ Both sessions accepted, re-ran the checks and hashes, read every delivered file,
 
 The change is in the shared harness (`run.py base_args(..., tools=)`) and applies to the acceptance session only; the A, D and E receipts were taken with the default tool list and are left as they were.
 
+## Arm G, same day: Opus 5 `high` as the acceptance session, correction loop exercised
+
+Fresh checkout, same fixture, same runner, reviewer changed to Opus 5 `high` (the skill's new Reviewer row) after it qualified on planted defects. **$1.24 to an accepted result, all 244 checks and four probes passing, and for the first time the correction loop ran: the reviewer found a real defect, Luna fixed it for a cent, and the resumed reviewer accepted.**
+
+| Round | Step | Model | Time | Cost |
+| --- | --- | --- | ---: | ---: |
+| 1 | Worker writes six adapters, `_shared.py`, 7 tests | Luna `max`, 19 responses | 635 s | $0.069 |
+| 1 | Runner checks: 146/146, tests pass, hashes unchanged | — | — | — |
+| 1 | Acceptance: `correct`, one finding | Opus 5 `high`, 7 turns, ~90 probes | 256 s | $1.002 |
+| 2 | Worker applies the fix, adds 4 regression cases | Luna `max`, 6 responses | 87 s | $0.011 |
+| 2 | Resumed acceptance: `accept` | Opus 5 `high`, 3 turns | 18 s | $0.163 |
+| | Total | | 996 s | **$1.244** |
+
+The finding was the same class Opus raised on the F submission: `statement_xml` tested "whitespace only" with `str.isspace()`, so NBSP, U+0085 or U+3000 outside a memo were silently dropped instead of rejected. It gave the reproduction, the fix (`strip(' \t\r\n')`) and the regression cases to add. Luna's second session changed one function and the tests; the resumed Opus session diffed the correction, re-ran the checks, probed the fix at every position, confirmed memo contents still pass through unchanged, and accepted. This submission raises `ValueError` on deeply nested JSON, so the RecursionError finding from the F review did not apply.
+
+Cost against F ($1.18, Fable accepting a submission that still had the XML defect): about the same money, a better result. The reviewer was not cheaper this time: Opus's first session cost $1.00, not the $0.32 to $0.57 seen on the F submission, because it wrote 22.9 k output tokens (9.8 k thinking, about 90 probes) against 4.4 k to 10 k before. Across four Opus 5 `high` acceptance sessions the cost has ranged $0.32 to $1.00 on the same task; the reviewer's own choice of how much to probe moves the bill more than the model price does. The resumed round was cheap ($0.16) because the context was already cached and the diff was small.
+
+Planted-defect and clean-submission results for this reviewer are in [results-reviewers-2026-09-11.md](results-reviewers-2026-09-11.md).
+
 ## Limits
 
-One run; a fixture both worker vendors have solved several times; the correction loop was not exercised; the worker took 17 minutes, which does not matter for cost but would for anyone waiting. The acceptance session is not an orchestrator: the script chose the worker and the checks, so F measures a fixed pipeline, not a coordinator's routing. Luna's own-thread usage may not be what a Codex subscription bills. The first F attempt aborted before any model spend on the worker (`codex exec` refused an untrusted directory; the runner then spent $0.46 on a Fable session that correctly rejected the empty handoff). That attempt is excluded from the table; including it, the F experiment cost $1.64, and the two figures are kept apart on purpose: $1.18 is what the workflow costs when it works, $1.64 is what this experiment cost. The runner now validates the whole handoff (schema, `complete` status, every claimed file present, at least one adapter listed) on every round, corrections included, and aborts with a receipt rather than spending on acceptance; there is still no automatic retry.
+One run per arm; a fixture both worker vendors have solved several times; F's correction loop was not exercised (G's was, once); the worker took 17 minutes, which does not matter for cost but would for anyone waiting. The acceptance session is not an orchestrator: the script chose the worker and the checks, so F measures a fixed pipeline, not a coordinator's routing. Luna's own-thread usage may not be what a Codex subscription bills. The first F attempt aborted before any model spend on the worker (`codex exec` refused an untrusted directory; the runner then spent $0.46 on a Fable session that correctly rejected the empty handoff). That attempt is excluded from the table; including it, the F experiment cost $1.64, and the two figures are kept apart on purpose: $1.18 is what the workflow costs when it works, $1.64 is what this experiment cost. The runner now validates the whole handoff (schema, `complete` status, every claimed file present, at least one adapter listed) on every round, corrections included, and aborts with a receipt rather than spending on acceptance; there is still no automatic retry.
 
 ## Identities
 
 - Skill SHA-256: `272a647921b7e67818a68c0bfadef7f49711ae346a52addb33154b84fb21ac12`
 - Fable session `06cd74b3-4365-4580-87de-e81db1b6c2ca`; Codex thread `01a09072-dd3c-76f1-be2a-64846e3a428d`; Codex CLI 0.153.4 via `codex exec`
 - Trimmed-context acceptance rerun: Fable session `6d60d569-a352-43e2-8e5a-4b0e52dc8f8a`
+- Arm G: Codex threads `01a090ce-2ca1-7142-a6e5-d50c6e8bc2d4` and `01a090db-c64f-7ef0-9708-26c86070c0e3`; root `%LOCALAPPDATA%\Temp\claude-adapters-software-opus-506c7815`; skill SHA-256 `e45f2809298a41d17d400138bdb5e2e6a51f09335c1c1a443e7210763792a741`; receipts under `private/software/G/`
 - Root `%LOCALAPPDATA%\Temp\claude-adapters-software-1e8874b5`; receipts, acceptance results, handoff, summary and the Codex rollout under `private/software/`
