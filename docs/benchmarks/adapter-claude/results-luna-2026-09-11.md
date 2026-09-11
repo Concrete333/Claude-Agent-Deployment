@@ -24,7 +24,7 @@ After the return Fable ran the checker and the tests, re-hashed every protected 
 | Sonnet forwarder | 4 | 14,563 | 5,898 | 1,516 | $0.053 |
 | Luna `max` (Codex) | 57,801 | 0 | 356,608 | 31,345 (18,678) | $0.056 |
 
-Fable's cache writes are nearly double D's (83.5k against 44.6k) for less work. The transcript shows why: the request after the ten-minute Agent call has `cache_read 0, cache_creation 39,434`. The five-minute cache had expired while Luna worked, so the whole context was written again, at 1.25× input price, about $0.49. A three-minute Opus worker never triggered this. Had the cache survived, E would have been roughly $0.90, about 42% below D. Under a one-hour cache the writes cost twice as much but survive the wait; whether that nets out depends on how many turns follow the wait. This is a real structural cost of pairing a fast orchestrator with a slow cheap worker under short caching, and it is not in any benchmark price table.
+Fable's cache writes are nearly double D's (83.5k against 44.6k) for less work. The transcript shows why: the request after the ten-minute Agent call has `cache_read 0, cache_creation 39,434`. The five-minute cache had expired while Luna worked, so the whole context was written again, at 1.25× input price, about $0.49. A three-minute Opus worker never triggered this. Had the cache survived, E would have been roughly $0.90, about 42% below D. Under a one-hour cache the writes cost 60% more (2× base input against 1.25×) but survive the wait; whether that nets out depends on how many turns follow the wait. This is a real structural cost of pairing a fast orchestrator with a slow cheap worker under short caching, and it is not in any benchmark price table.
 
 ## Runtime findings
 

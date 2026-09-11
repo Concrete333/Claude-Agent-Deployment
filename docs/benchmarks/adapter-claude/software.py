@@ -202,6 +202,43 @@ def accept(manifest, packet, out_dir, resume_session=None, name='accept', review
             'session_id': d.get('session_id'), 'num_turns': d.get('num_turns'), 'duration_s': r['duration_s'], 'subtype': d.get('subtype')}
 
 
+def handoff_problems(worker, manifest):
+    """Every reason a worker round must not proceed to a paid acceptance session. Checked on every round,
+    corrections included. An empty list means the handoff is complete and its claimed artifacts exist."""
+    problems = []
+    if worker['returncode'] != 0:
+        problems.append(f'codex exec exit code {worker["returncode"]}')
+    if worker['timed_out']:
+        problems.append('worker timed out')
+    h = worker['handoff']
+    if not isinstance(h, dict):
+        return problems + ['no handoff object']
+    for key, typ in (('status', str), ('summary', str), ('files_changed', list), ('checks_run', str),
+                     ('unresolved_risks', list), ('judgment_calls', list)):
+        if not isinstance(h.get(key), typ):
+            problems.append(f'handoff.{key} missing or not {typ.__name__}')
+    if set(h) - set(SCHEMA['properties']):
+        problems.append('handoff has keys outside the schema')
+    if h.get('status') not in SCHEMA['properties']['status']['enum']:
+        problems.append(f'handoff.status {h.get("status")!r} not in schema')
+    elif h['status'] != 'complete':
+        problems.append(f'worker reported status {h["status"]}')
+    cwd = Path(manifest['checkout'])
+    for rel in h.get('files_changed') or []:
+        if not isinstance(rel, str) or not (cwd / rel).is_file():
+            problems.append(f'claimed file missing: {rel!r}')
+    if isinstance(h.get('files_changed'), list) and not any(isinstance(r, str) and r.startswith('imports/adapters/') for r in h['files_changed']):
+        problems.append('no adapter module listed in files_changed')
+    return problems
+
+
+def abort(root, rounds, t0, worker_dir, problems):
+    receipt = {'rounds': rounds, 'wall_s': time.time() - t0, 'aborted': 'handoff failed validation; no acceptance session spent', 'problems': problems}
+    (root / 'receipt-F.json').write_text(json.dumps(receipt, indent=2), encoding='utf-8')
+    print(json.dumps({'aborted': receipt['aborted'], 'problems': problems,
+                      'stderr_tail': (worker_dir / 'stderr.log').read_text(encoding='utf-8')[-600:] if (worker_dir / 'stderr.log').exists() else ''}, indent=2))
+
+
 def run():
     root, manifest = load()
     if (root / 'receipt-F.json').exists():
@@ -210,11 +247,10 @@ def run():
         raise SystemExit('checkout changed since prepare')
     t0 = time.time()
     worker1 = run_worker(manifest, root / 'worker-1', WORKER_PROMPT)
-    if worker1['returncode'] != 0 or not isinstance(worker1['handoff'], dict) or 'status' not in worker1['handoff']:
-        receipt = {'rounds': [{'worker': worker1}], 'wall_s': time.time() - t0, 'aborted': 'worker did not return a handoff; no acceptance session spent'}
-        (root / 'receipt-F.json').write_text(json.dumps(receipt, indent=2), encoding='utf-8')
-        print(json.dumps({'aborted': receipt['aborted'], 'returncode': worker1['returncode'], 'timed_out': worker1['timed_out'],
-                          'stderr_tail': (root / 'worker-1' / 'stderr.log').read_text(encoding='utf-8')[-600:]}, indent=2))
+    problems = handoff_problems(worker1, manifest)
+    if problems:
+        # No automatic retry: the repair path is a person reading the receipt. The worker's spend is in its rollout.
+        abort(root, [{'worker': worker1}], t0, root / 'worker-1', problems)
         return
     checks1 = run_checks(manifest)
     skill = Path(manifest['checkout']) / 'SKILL.md'
@@ -228,6 +264,10 @@ def run():
         fix_prompt = ('Your earlier implementation of TASK.md is already in this checkout (adapters, _shared.py, tests). ' + fix_prompt)
         skill.unlink()
         worker2 = run_worker(manifest, root / 'worker-2', fix_prompt)
+        problems = handoff_problems(worker2, manifest)
+        if problems:
+            abort(root, rounds + [{'worker': worker2}], t0, root / 'worker-2', problems)
+            return
         checks2 = run_checks(manifest)
         shutil.copy2(adapters.SKILL_PATH, skill)
         packet2 = {'handoff': worker2['handoff'], 'checks': checks2, 'diff': diff_text(manifest)}
