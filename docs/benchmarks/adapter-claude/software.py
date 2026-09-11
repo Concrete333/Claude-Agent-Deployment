@@ -181,8 +181,8 @@ def acceptance_prompt(packet):
 ACCEPT_TOOLS = ['Read', 'Glob', 'Grep', 'Bash', 'PowerShell']  # what an acceptance session may do: read, search, run. Not edit.
 
 
-def accept(manifest, packet, out_dir, resume_session=None, name='accept'):
-    args = harness.base_args(*ORCH, ACCEPT_BUDGET, ['Agent', 'Task', 'Edit', 'Write'], ACCEPT_TOOLS, tools=ACCEPT_TOOLS)
+def accept(manifest, packet, out_dir, resume_session=None, name='accept', reviewer=None):
+    args = harness.base_args(*(reviewer or ORCH), ACCEPT_BUDGET, ['Agent', 'Task', 'Edit', 'Write'], ACCEPT_TOOLS, tools=ACCEPT_TOOLS)
     args += ['--json-schema', json.dumps(ACCEPT_SCHEMA)]
     if resume_session:
         args += ['--resume', resume_session]
@@ -241,25 +241,42 @@ def run():
                       'accept_costs': [r['acceptance']['cost_usd'] for r in rounds]}, indent=2))
 
 
-def reaccept():
+def reaccept(argv):
     """Rerun only the acceptance session on the saved worker-1 submission (same prompt, same files), to measure a
-    change to the acceptance session's configuration. One Fable session per call; receipt-F.json is not touched."""
+    change to the acceptance session's configuration. One session per call; receipt-F.json is not touched.
+
+      reaccept [--reviewer MODEL EFFORT] [--checkout DIR] [--label NAME]
+
+    --checkout points the session at a copy of the F checkout (for example one with planted defects); the runner
+    checks are re-run there and the worker's saved handoff is presented unchanged, as a real worker would have."""
     root, manifest = load()
+    reviewer, label = None, 'reaccept'
+    i = 0
+    while i < len(argv):
+        if argv[i] == '--reviewer':
+            reviewer = (argv[i + 1], argv[i + 2]); i += 3
+        elif argv[i] == '--checkout':
+            manifest = dict(manifest, checkout=str(Path(argv[i + 1]).resolve())); i += 2
+        elif argv[i] == '--label':
+            label = argv[i + 1]; i += 2
+        else:
+            raise SystemExit(f'unknown argument {argv[i]}')
     summary = json.loads((root / 'summary-F.json').read_text(encoding='utf-8'))
     cwd = Path(manifest['checkout'])
     owned = {k: v for k, v in adapters.tree_hashes(cwd).items() if k.startswith('imports/adapters/') or k.startswith('test_')}
-    if owned != summary['owned_file_hashes']:
-        raise SystemExit('checkout differs from the graded F submission; refusing')
+    if label == 'reaccept' and owned != summary['owned_file_hashes']:
+        raise SystemExit('checkout differs from the graded F submission; refusing (use --label for a variant checkout)')
     handoff = json.loads((root / 'worker-1' / 'handoff.json').read_text(encoding='utf-8'))
-    n = 1 + len(list(root.glob('reaccept-*')))
-    out_dir = root / f'reaccept-{n}'
+    n = 1 + len(list(root.glob(f'{label}-*')))
+    out_dir = root / f'{label}-{n}'
     out_dir.mkdir()
     shutil.copy2(adapters.SKILL_PATH, cwd / 'SKILL.md')
     packet = {'handoff': handoff, 'checks': run_checks(manifest), 'diff': diff_text(manifest)}
-    acc = accept(manifest, packet, out_dir, name='accept')
-    acc['configuration'] = {'tools': ACCEPT_TOOLS, 'orchestrator': ORCH, 'budget': ACCEPT_BUDGET}
+    acc = accept(manifest, packet, out_dir, name='accept', reviewer=reviewer)
+    acc['configuration'] = {'tools': ACCEPT_TOOLS, 'reviewer': list(reviewer or ORCH), 'budget': ACCEPT_BUDGET,
+                            'checkout': manifest['checkout'], 'owned_file_hashes': owned}
     (out_dir / 'receipt-reaccept.json').write_text(json.dumps(acc, indent=2), encoding='utf-8')
-    print(json.dumps({'reaccept': n, 'decision': acc['decision'], 'cost_usd': acc['cost_usd'], 'turns': acc['num_turns'],
+    print(json.dumps({label: n, 'decision': acc['decision'], 'cost_usd': acc['cost_usd'], 'turns': acc['num_turns'],
                       'duration_s': round(acc['duration_s']), 'usage': acc['usage'],
                       'modelUsage': {m: {k: u[k] for k in ('cacheCreationInputTokens', 'cacheReadInputTokens', 'outputTokens', 'costUSD')}
                                      for m, u in (acc['modelUsage'] or {}).items()}}, indent=2))
@@ -319,4 +336,7 @@ def summarize():
 
 if __name__ == '__main__':
     mode = sys.argv[1] if len(sys.argv) > 1 else ''
-    {'prepare': prepare, 'run': run, 'summarize': summarize, 'reaccept': reaccept}.get(mode, lambda: print(__doc__))()
+    if mode == 'reaccept':
+        reaccept(sys.argv[2:])
+    else:
+        {'prepare': prepare, 'run': run, 'summarize': summarize}.get(mode, lambda: print(__doc__))()
