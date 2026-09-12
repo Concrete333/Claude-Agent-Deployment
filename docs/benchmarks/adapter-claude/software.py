@@ -327,6 +327,45 @@ def reaccept(argv):
                                      for m, u in (acc['modelUsage'] or {}).items()}}, indent=2))
 
 
+def correct(argv):
+    """Run one correction round from a saved acceptance: `correct --from <label-dir>`. Fresh Luna session with the
+    reviewer's findings, handoff guard, runner checks, then the same reviewer session resumed. Used when an acceptance
+    was run through `reaccept` (for example after an interrupted `run`) and returned `correct`."""
+    root, manifest = load()
+    src = Path(argv[argv.index('--from') + 1])
+    if not src.is_absolute():
+        src = root / src
+    acc1 = json.loads((src / 'receipt-reaccept.json').read_text(encoding='utf-8'))
+    if acc1['decision'].get('decision') != 'correct' or not acc1['decision'].get('findings'):
+        raise SystemExit('saved acceptance is not a correct decision with findings')
+    if (src / 'receipt-correct.json').exists():
+        raise SystemExit('correction already run for this acceptance')
+    reviewer = tuple(acc1['configuration']['reviewer'])
+    cwd = Path(manifest['checkout'])
+    t0 = time.time()
+    fix_prompt = ('Your earlier implementation of TASK.md is already in this checkout (adapters, _shared.py, tests). '
+                  'The orchestrator reviewed your work and requires these corrections before acceptance:\n- ' +
+                  '\n- '.join(acc1['decision']['findings']) + '\n\nApply them, rerun your checks, and return JSON matching the schema.')
+    skill = cwd / 'SKILL.md'
+    if skill.exists():
+        skill.unlink()
+    n = 1 + len(list(root.glob('worker-*')))
+    worker2 = run_worker(manifest, root / f'worker-{n}', fix_prompt)
+    problems = handoff_problems(worker2, manifest)
+    if problems:
+        (src / 'receipt-correct.json').write_text(json.dumps({'worker': worker2, 'aborted': problems}, indent=2), encoding='utf-8')
+        print(json.dumps({'aborted': problems}, indent=2))
+        return
+    checks2 = run_checks(manifest)
+    shutil.copy2(adapters.SKILL_PATH, skill)
+    packet2 = {'handoff': worker2['handoff'], 'checks': checks2, 'diff': diff_text(manifest)}
+    acc2 = accept(manifest, packet2, src, resume_session=acc1['session_id'], name='accept', reviewer=reviewer)
+    out = {'worker': worker2, 'checks': checks2, 'acceptance': acc2, 'wall_s': time.time() - t0, 'from': str(src)}
+    (src / 'receipt-correct.json').write_text(json.dumps(out, indent=2), encoding='utf-8')
+    print(json.dumps({'decision': acc2['decision'], 'accept_cost_usd': acc2['cost_usd'], 'worker_thread': worker2['thread_id'],
+                      'worker_dur_s': round(worker2['duration_s']), 'checks': checks2}, indent=2))
+
+
 def luna_accounting(thread_ids):
     out = []
     for path in (Path.home() / '.codex/sessions').glob('*/*/*/rollout-*.jsonl'):
@@ -383,5 +422,7 @@ if __name__ == '__main__':
     mode = sys.argv[1] if len(sys.argv) > 1 else ''
     if mode == 'reaccept':
         reaccept(sys.argv[2:])
+    elif mode == 'correct':
+        correct(sys.argv[2:])
     else:
         {'prepare': prepare, 'run': run, 'summarize': summarize}.get(mode, lambda: print(__doc__))()
